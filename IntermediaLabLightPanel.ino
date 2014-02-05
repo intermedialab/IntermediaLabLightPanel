@@ -18,11 +18,13 @@ int masterChannel2 = 13;
 
 int pinBrightness1 = A0;
 float brightness1 = 0;
+float brightness1smoothed = 0;
 int pinTemperature1 = A1;
 int temperature1 = 255;
 
 int pinBrightness2 = A2;
 float brightness2 = 0;
+float brightness2smoothed = 0;
 int pinTemperature2 = A3;
 int temperature2 = 0;
 
@@ -44,15 +46,22 @@ void loop() {
   brightness1 *= 0.95;
   brightness1 += max(0,(0.05*map(analogRead(pinBrightness1), 1020, 0, 0, 255)));
   brightness2 = brightness1;
+  
+  brightness1smoothed *= 0.99;
+  brightness1smoothed += brightness1 * 0.01;
+  
+  brightness2smoothed *= 0.99;
+  brightness2smoothed += brightness2 * 0.01;
 
+  
   int coldComponent1 = round(min(1.0,map(temperature1, 0, 127, 0, 1.))*brightness1);
   int warmComponent1 = round(min(1.0,map(temperature1, 127, 255, 1., 0))*brightness1);
   int coldComponent2 = round(min(1.0,map(temperature2, 0, 127, 0,1.))*brightness2);
   int warmComponent2 = round(min(1.0,map(temperature2, 127, 255, 1., 0))*brightness2);
 
   // only turn on the master switches if there's some brightness
-  DmxMaster.write(1, (brightness1 > 0)?255:0);
-  DmxMaster.write(13, (brightness2 > 0)?255:0);
+  DmxMaster.write(1, (brightness1smoothed > 0.01)?255:0);
+  DmxMaster.write(13, (brightness2smoothed > 0.01)?255:0);
 
   DmxMaster.write(24, coldComponent1);
   DmxMaster.write(25, warmComponent1);
