@@ -9,6 +9,8 @@
 /* To use DmxMaster, you will need the following line. Arduino will
  ** auto-insert it if you select Sketch > Import Library > DmxMaster. */
 
+//TODO: LED mixup and clear terminology left/rigt and 1/2 should be inner/outer
+
 #include <DmxMaster.h>
 
 int startChannel = 24;
@@ -21,7 +23,6 @@ float brightness1 = 0;
 float brightness1smoothed = 0;
 int rawTemperature1 = 127;
 float temperature1 = 127.;
-
 
 int rawBrightness2 = 0;
 float brightness2 = 0;
