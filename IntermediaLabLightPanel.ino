@@ -1,54 +1,51 @@
-/* Welcome to DmxMaster. This library allows you to control DMX stage and
- ** architectural lighting and visual effects easily from Arduino. DmxMaster
- ** is compatible with the Tinker.it! DMX shield and all known DIY Arduino
- ** DMX control circuits.
- **
- ** DmxMaster is available from: http://code.google.com/p/tinkerit/
- ** Help and support: http://groups.google.com/group/DmxMaster */
-
-/* To use DmxMaster, you will need the following line. Arduino will
- ** auto-insert it if you select Sketch > Import Library > DmxMaster. */
-
-//TODO: LED mixup and clear terminology left/rigt and 1/2 should be inner/outer
-
 #include <DmxMaster.h>
+
+int startupDelayMillis = 3000;
+float touchStepSize = 0.25;
+float smoothSpeedStartup = 0.005;
+float smoothSpeedNormal = 0.03;
 
 int startChannel = 24;
 
-int masterChannel1 = 1;
-int masterChannel2 = 13;
+int masterChannelOuter = 1;
+boolean masterChannelOuterOn = false;
+int masterChannelInner = 13;
+boolean masterChannelInnerOn = false;
 
-int rawBrightness1 = 0;
-float brightness1 = 0;
-float brightness1smoothed = 0;
-int rawTemperature1 = 127;
-float temperature1 = 127.;
+float rawBrightnessInner = 0;
+float brightnessInner = 0;
+float brightnessInnerSmoothed = 0;
+float rawTemperatureInner = 0;
+float temperatureInner = 0.;
 
-int rawBrightness2 = 0;
-float brightness2 = 0;
-float brightness2smoothed = 0;
-int rawTemperature2 = 127;
-float temperature2 = 127.;
+float rawBrightnessOuter = 0;
+float brightnessOuter = 0;
+float brightnessOuterSmoothed = 0;
+float rawTemperatureOuter = 0;
+float temperatureOuter = 0.;
 
-int pinLEDright = A0;
-int pinLEDleft = A1;
+int pinLEDinner = A0;
+int pinLEDouter = A1;
 
-int pinToggleRight = 13;
-boolean pinToggleRightState = HIGH;
-int pinToggleLeft = 8;
-boolean pinToggleLeftState = HIGH;
+int pinToggleInner = 13;
+boolean pinToggleInnerState = HIGH;
+long toggleInnerStartupTime = 0;
 
-int pinDownRight = 12;
-int pinDownLeft = 7;
+int pinToggleOuter = 8;
+boolean pinToggleOuterState = HIGH;
+long toggleOuterStartupTime = 0;
 
-int pinUpRight = 11;
-int pinUpLeft = A2;
+int pinDownInner = 12;
+int pinDownOuter = 7;
 
-int pinColderRight = 10;
-int pinColderLeft = A3;
+int pinUpInner = 11;
+int pinUpOuter = A2;
 
-int pinWarmerRight = 9;
-int pinWarmerLeft = A4;
+int pinColderInner = 10;
+int pinColderOuter = A3;
+
+int pinWarmerInner = 9;
+int pinWarmerOuter = A4;
 
 void setup() {
   /* The most common pin for DMX output is pin 3, which DmxMaster
@@ -62,23 +59,23 @@ void setup() {
    ** highest channel you DmxMaster.write() to. */
   DmxMaster.maxChannel(startChannel+16);
 
-  pinMode( pinLEDright, OUTPUT);
-  pinMode( pinLEDleft, OUTPUT);
+  pinMode( pinLEDinner, OUTPUT);
+  pinMode( pinLEDouter, OUTPUT);
 
-  pinMode( pinToggleRight, INPUT_PULLUP);
-  pinMode( pinToggleLeft, INPUT_PULLUP);
+  pinMode( pinToggleInner, INPUT_PULLUP);
+  pinMode( pinToggleOuter, INPUT_PULLUP);
 
-  pinMode( pinDownRight, INPUT_PULLUP);
-  pinMode( pinDownLeft, INPUT_PULLUP);
+  pinMode( pinDownInner, INPUT_PULLUP);
+  pinMode( pinDownOuter, INPUT_PULLUP);
 
-  pinMode( pinUpRight, INPUT_PULLUP);
-  pinMode( pinUpLeft, INPUT_PULLUP);
+  pinMode( pinUpInner, INPUT_PULLUP);
+  pinMode( pinUpOuter, INPUT_PULLUP);
 
-  pinMode( pinColderRight, INPUT_PULLUP);
-  pinMode( pinColderLeft, INPUT_PULLUP);
+  pinMode( pinColderInner, INPUT_PULLUP);
+  pinMode( pinColderOuter, INPUT_PULLUP);
 
-  pinMode( pinWarmerRight, INPUT_PULLUP);
-  pinMode( pinWarmerLeft, INPUT_PULLUP);
+  pinMode( pinWarmerInner, INPUT_PULLUP);
+  pinMode( pinWarmerOuter, INPUT_PULLUP);
 
   //Serial.begin(9600);
 
@@ -86,173 +83,203 @@ void setup() {
 
 void loop() {
 
-  boolean rightState = digitalRead(pinToggleRight);
+  boolean innerState = digitalRead(pinToggleInner);
 
-  if(rightState == LOW && pinToggleRightState == HIGH){
-    if(rawBrightness1 == 0) {
-      rawBrightness1 = 255;
-      rawTemperature1 = 127;
+  if(innerState == LOW && pinToggleInnerState == HIGH){
+    if(rawBrightnessInner == 0) {
+      if(!masterChannelInnerOn){
+        toggleInnerStartupTime = millis() + startupDelayMillis;
+      }
+      rawBrightnessInner = 255;
+      rawTemperatureInner = 127;
     } 
     else {
-      rawBrightness1 = 0;
-      rawTemperature1 = 0;
+      rawBrightnessInner = 0;
+      rawTemperatureInner = 0;
     } 
-    //Serial.println("Toggle Right");
+    //Serial.println("Toggle Inner");
   }
 
-  pinToggleRightState = rightState;
+  pinToggleInnerState = innerState;
 
-  if(digitalRead(pinUpRight) == LOW){
-    if(digitalRead(pinDownRight) == LOW){
-      rawBrightness1 = rawBrightness2;
+  if(digitalRead(pinUpInner) == LOW){
+    if(digitalRead(pinDownInner) == LOW){
+      rawBrightnessInner = rawBrightnessOuter;
     } 
     else {
-      rawBrightness1++;
-      rawBrightness1 = min(rawBrightness1, 255);
+      rawBrightnessInner+=touchStepSize;
+      rawBrightnessInner = min(rawBrightnessInner, 255);
     }
   } 
-  else if(digitalRead(pinDownRight) == LOW){
-    rawBrightness1--;
-    rawBrightness1 = max(rawBrightness1, 0);
+  else if(digitalRead(pinDownInner) == LOW){
+    rawBrightnessInner-=touchStepSize;
+    rawBrightnessInner = max(rawBrightnessInner, 0);
   }
 
-  if(digitalRead(pinWarmerRight) == LOW){
-    if(digitalRead(pinColderRight) == LOW){
-      rawTemperature1 = rawTemperature2;
+  if(digitalRead(pinWarmerInner) == LOW){
+    if(digitalRead(pinColderInner) == LOW){
+      rawTemperatureInner = rawTemperatureOuter;
     } 
     else {
-      rawTemperature1--;
-      rawTemperature1 = max(rawTemperature1, 0);
+      rawTemperatureInner-=touchStepSize;
+      rawTemperatureInner = max(rawTemperatureInner, 0);
     }
   } 
-  else if(digitalRead(pinColderRight) == LOW){
-    rawTemperature1++;
-    rawTemperature1 = min(rawTemperature1, 255);
+  else if(digitalRead(pinColderInner) == LOW){
+    rawTemperatureInner+=touchStepSize;
+    rawTemperatureInner = min(rawTemperatureInner, 255);
   }
 
-  boolean leftState = digitalRead(pinToggleLeft);
+  boolean outerState = digitalRead(pinToggleOuter);
 
-  if(leftState == LOW && pinToggleLeftState == HIGH){
-    if(rawBrightness2 == 0) {
-      rawBrightness2 = 255;
-      rawTemperature2 = 127;
+  if(outerState == LOW && pinToggleOuterState == HIGH){
+    if(rawBrightnessOuter == 0) {
+      if(!masterChannelOuterOn){
+        toggleOuterStartupTime = millis() + startupDelayMillis;
+      }
+      rawBrightnessOuter = 255;
+      rawTemperatureOuter = 127;
     } 
     else {
-      rawBrightness2 = 0;
-      rawTemperature2 = 0;
+      rawBrightnessOuter = 0;
+      rawTemperatureOuter = 0;
     } 
-    //Serial.println("Toggle Left");
+    //Serial.println("Toggle Outer");
   }
 
-  pinToggleLeftState = leftState;
+  pinToggleOuterState = outerState;
 
-  if(digitalRead(pinUpLeft) == LOW){
-    if(digitalRead(pinDownLeft) == LOW){
-      rawBrightness2 = rawBrightness1;
+  if(digitalRead(pinUpOuter) == LOW){
+    if(digitalRead(pinDownOuter) == LOW){
+      rawBrightnessOuter = rawBrightnessInner;
     } 
     else {
-      rawBrightness2++;
-      rawBrightness2 = min(rawBrightness2, 255);
+      rawBrightnessOuter+=touchStepSize;
+      rawBrightnessOuter = min(rawBrightnessOuter, 255);
     }
   } 
-  else if(digitalRead(pinDownLeft) == LOW){
-    rawBrightness2--;
-    rawBrightness2 = max(rawBrightness2, 0);
+  else if(digitalRead(pinDownOuter) == LOW){
+    rawBrightnessOuter-=touchStepSize;
+    rawBrightnessOuter = max(rawBrightnessOuter, 0);
   }
 
-  if(digitalRead(pinWarmerLeft) == LOW){
-    if(digitalRead(pinColderLeft) == LOW){
-      rawTemperature2 = rawTemperature1;
+  if(digitalRead(pinWarmerOuter) == LOW){
+    if(digitalRead(pinColderOuter) == LOW){
+      rawTemperatureOuter = rawTemperatureInner;
     } 
     else {
-      rawTemperature2--;
-      rawTemperature2 = max(rawTemperature2, 0);
+      rawTemperatureOuter-=touchStepSize;
+      rawTemperatureOuter = max(rawTemperatureOuter, 0);
     }
   } 
-  else if(digitalRead(pinColderLeft) == LOW){
-    rawTemperature2++;
-    rawTemperature2 = min(rawTemperature2, 255);
+  else if(digitalRead(pinColderOuter) == LOW){
+    rawTemperatureOuter+=touchStepSize;
+    rawTemperatureOuter = min(rawTemperatureOuter, 255);
   }
 
-  brightness1 *= 0.95;
-  brightness1 += (0.05*rawBrightness1);
+  if(toggleInnerStartupTime < millis()){
+    float smoothSpeed = smoothSpeedNormal;
+    brightnessInner *= 1.0-smoothSpeed;
+    brightnessInner += (smoothSpeed*rawBrightnessInner);
+    brightnessInnerSmoothed *= 0.99;
+    brightnessInnerSmoothed += brightnessInner * 0.01;
+    temperatureInner *= 0.99;
+    temperatureInner += 0.01*rawTemperatureInner;
+  }
 
-  brightness2 *= 0.95;
-  brightness2 += (0.05*rawBrightness2);
-
-  brightness1smoothed *= 0.99;
-  brightness1smoothed += brightness1 * 0.01;
-
-  brightness2smoothed *= 0.99;
-  brightness2smoothed += brightness2 * 0.01;
-
-  temperature1 *= 0.99;
-  temperature1 += 0.01*rawTemperature1;
-
-  temperature2 *= 0.99;
-  temperature2 += 0.01*rawTemperature2;
-
+  if(toggleOuterStartupTime < millis()){
+    float smoothSpeed = smoothSpeedNormal;
+    brightnessOuter *= 1.0-smoothSpeed;
+    brightnessOuter += (smoothSpeed*rawBrightnessOuter);
+    brightnessOuterSmoothed *= 0.99;
+    brightnessOuterSmoothed += brightnessOuter * 0.01;
+    temperatureOuter *= 0.99;
+    temperatureOuter += 0.01*rawTemperatureOuter;
+  }
+  
   //Serial.print("\t B1: ");
-  //Serial.print(brightness1);
+  //Serial.print(brightnessInner);
   //Serial.print("\t T1: ");
-  //Serial.print(temperature1);
+  //Serial.print(temperatureInner);
   //Serial.print("\t B2: ");
-  //Serial.print(brightness2);
+  //Serial.print(brightnessOuter);
   //Serial.print("\t T2: ");
-  //Serial.println(temperature2);
+  //Serial.println(temperatureOuter);
 
-  int coldComponentRight = round(constrain(map(temperature2, 0.0, 127.0, 0.0, 255.0), 0.0,255.0)*brightness2/255.);
-  int warmComponentRight = round(constrain(map(temperature2, 127.0, 255.0, 255.0, 0.0), 0.0,255.0)*brightness2/255.);
-  int coldComponentLeft = round(constrain(map(temperature1, 0.0, 127.0, 0.0,255.0), 0.0,255.0)*brightness1/255.);
-  int warmComponentLeft = round(constrain(map(temperature1, 127.0, 255.0, 255.0, 0.0), 0.0,255.0)*brightness1/255.);
+  int coldComponentOuter = round(constrain(map(temperatureOuter, 0.0, 127.0, 0.0, 255.0), 0.0,255.0)*brightnessOuter/255.);
+  int warmComponentOuter = round(constrain(map(temperatureOuter, 127.0, 255.0, 255.0, 0.0), 0.0,255.0)*brightnessOuter/255.);
+  int coldComponentInner = round(constrain(map(temperatureInner, 0.0, 127.0, 0.0,255.0), 0.0,255.0)*brightnessInner/255.);
+  int warmComponentInner = round(constrain(map(temperatureInner, 127.0, 255.0, 255.0, 0.0), 0.0,255.0)*brightnessInner/255.);
 
   // only turn on the master switches if there's some brightness
 
-  if(brightness2smoothed > 0.001){
-    digitalWrite(pinLEDright, LOW);
-    DmxMaster.write(masterChannel1, 255);
+  if(brightnessOuterSmoothed > 0.001){
+    digitalWrite(pinLEDouter, HIGH);
+    masterChannelOuterOn = true;
   } 
   else {
-    digitalWrite(pinLEDright, HIGH);
-    DmxMaster.write(masterChannel1, 0);
+    if(toggleOuterStartupTime > millis() - startupDelayMillis){
+      digitalWrite(pinLEDouter, (millis()%1000 < 500)?LOW:HIGH);
+      masterChannelOuterOn = true;
+    } 
+    else {
+      digitalWrite(pinLEDouter, HIGH);
+      masterChannelOuterOn = false;
+    }
   }
 
-  if(brightness1smoothed > 0.001){
-    digitalWrite(pinLEDleft, LOW);
-    DmxMaster.write(masterChannel2,255);
+  if(brightnessInnerSmoothed > 0.001){
+    digitalWrite(pinLEDinner, HIGH);
+    masterChannelInnerOn = true;
   } 
   else {
-    digitalWrite(pinLEDleft, HIGH);
-    DmxMaster.write(masterChannel2, 0);
+    if(toggleInnerStartupTime > millis() - startupDelayMillis){
+      digitalWrite(pinLEDinner, (millis()%1000 < 500)?LOW:HIGH);
+      masterChannelInnerOn = true;
+    } 
+    else {
+      digitalWrite(pinLEDinner, HIGH);
+      masterChannelInnerOn = false;
+    }
   }
 
-  DmxMaster.write(24, coldComponentRight);
-  DmxMaster.write(25, warmComponentRight);
+  DmxMaster.write(masterChannelOuter, masterChannelOuterOn?255:0);
+  DmxMaster.write(masterChannelInner, masterChannelInnerOn?255:0);
 
-  DmxMaster.write(26, coldComponentRight);
-  DmxMaster.write(27, warmComponentRight);
+  DmxMaster.write(24, coldComponentOuter);
+  DmxMaster.write(25, warmComponentOuter);
 
-  DmxMaster.write(28, coldComponentRight);
-  DmxMaster.write(29, warmComponentRight);
+  DmxMaster.write(26, coldComponentOuter);
+  DmxMaster.write(27, warmComponentOuter);
 
-  DmxMaster.write(30, coldComponentRight);
-  DmxMaster.write(31, warmComponentRight);
+  DmxMaster.write(28, coldComponentOuter);
+  DmxMaster.write(29, warmComponentOuter);
 
-  DmxMaster.write(32, coldComponentLeft);
-  DmxMaster.write(33, warmComponentLeft);
+  DmxMaster.write(30, coldComponentOuter);
+  DmxMaster.write(31, warmComponentOuter);
 
-  DmxMaster.write(34, coldComponentLeft);
-  DmxMaster.write(35, warmComponentLeft);
+  DmxMaster.write(32, coldComponentInner);
+  DmxMaster.write(33, warmComponentInner);
 
-  DmxMaster.write(36, coldComponentLeft);
-  DmxMaster.write(37, warmComponentLeft);
+  DmxMaster.write(34, coldComponentInner);
+  DmxMaster.write(35, warmComponentInner);
 
-  DmxMaster.write(38, coldComponentLeft);
-  DmxMaster.write(39, warmComponentLeft);
+  DmxMaster.write(36, coldComponentInner);
+  DmxMaster.write(37, warmComponentInner);
+
+  DmxMaster.write(38, coldComponentInner);
+  DmxMaster.write(39, warmComponentInner);
 
   //delay(10);
 
 }
+
+
+
+
+
+
+
 
 
 
