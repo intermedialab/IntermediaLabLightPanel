@@ -1,13 +1,27 @@
 /*IntermediaLabLightPanel
-
-**  ---DMX Channel Overview---
-**  1-32   Dimmers
-**  32-64  Relays
-**  64-80  Led's 
-*/
+ 
+ **  ---DMX Channel Overview---
+ **  1-32   Dimmers
+ **  32-64  Relays
+ **  64-80  Led's 
+ */
 
 
 #include <DmxMaster.h>
+
+//  Mux
+//Give convenient names to the control pins
+#define CONTROL0 5    
+#define CONTROL1 4
+#define CONTROL2 3
+#define CONTROL3 2
+
+//Create arrays for data from the the MUXs
+//See the Arduino Array Reference: http://www.arduino.cc/en/Reference/Array
+int mux0array[16];
+int mux1array[16];
+int mux2array[16];
+
 
 int startupDelayMillis = 3000;
 float touchStepSize = 0.25;
@@ -88,6 +102,15 @@ void setup() {
 
   //Serial.begin(9600);
 
+  // Mux Setup
+  //Set MUX control pins to output
+  pinMode(CONTROL0, OUTPUT);
+  pinMode(CONTROL1, OUTPUT);
+  pinMode(CONTROL2, OUTPUT);
+  pinMode(CONTROL3, OUTPUT);
+
+  //Open the serial port at 28800 bps
+  Serial.begin(28800);
 }
 
 void loop() {
@@ -205,7 +228,7 @@ void loop() {
     temperatureOuter *= 0.99;
     temperatureOuter += 0.01*rawTemperatureOuter;
   }
-  
+
   //Serial.print("\t B1: ");
   //Serial.print(brightnessInner);
   //Serial.print("\t T1: ");
@@ -282,6 +305,7 @@ void loop() {
   //delay(10);
 
 }
+
 
 
 
