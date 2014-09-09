@@ -1,3 +1,12 @@
+/*IntermediaLabLightPanel
+
+**  ---DMX Channel Overview---
+**  1-32   Dimmers
+**  32-64  Relays
+**  64-80  Led's 
+*/
+
+
 #include <DmxMaster.h>
 
 int startupDelayMillis = 3000;
