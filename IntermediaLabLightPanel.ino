@@ -1,6 +1,7 @@
 /**********************************************************************
 
  IntermediaLabLightPanel
+ version 1.0
  
  --- DMX Channel Overview ---
  
